@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Habitable Zone & Orbital Mechanics Simulator</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="sim-container">
+    <!-- Main Simulation Canvas -->
+    <canvas id="simCanvas"></canvas>
+
+    <!-- Top Navigation & Title Bar -->
+    <header class="top-bar glass-panel">
+      <div class="header-left">
+        <div class="title-cluster">
+          <span class="pulse-indicator"></span>
+          <h1>Habitable Zone Simulator</h1>
+        </div>
+        <p class="subtitle">Real-time Inverse-Square Flux, Stefan-Boltzmann Thermal Equilibrium & Leapfrog Integrator</p>
+      </div>
+      <div class="header-right">
+        <div class="star-selector-group">
+          <label for="starPresetSelect">Host Star:</label>
+          <select id="starPresetSelect" class="custom-select"></select>
+        </div>
+      </div>
+    </header>
+
+    <!-- Live Planetary Telemetry HUD (Primary Prompt Requirement) -->
+    <aside class="hud-panel glass-panel" id="telemetryHUD">
+      <div class="hud-header">
+        <div class="hud-title-wrap">
+          <span class="icon">🪐</span>
+          <h2>Planetary Telemetry</h2>
+        </div>
+        <span class="live-tag">LIVE</span>
+      </div>
+
+      <div class="status-box">
+        <div class="status-label-row">
+          <span class="label-caption">Current State:</span>
+          <span id="statusBadge" class="status-badge status-habitable">HABITABLE ZONE</span>
+        </div>
+        <p id="statusDesc" class="status-desc">Liquid water stable! Earth-like oceans, temperate climate, and life-friendly.</p>
+      </div>
+
+      <div class="metrics-grid">
+        <!-- Distance -->
+        <div class="metric-card">
+          <div class="metric-label">Orbital Distance (d)</div>
+          <div class="metric-value-row">
+            <span id="valDistanceAU" class="metric-main">1.000 AU</span>
+            <span id="valDistanceKm" class="metric-sub">(149.6M km)</span>
+          </div>
+          <div class="metric-hint">Inverse-square scale: $F \propto 1/d^2$</div>
+        </div>
+
+        <!-- Radiant Flux -->
+        <div class="metric-card">
+          <div class="metric-label">Incident Flux (F)</div>
+          <div class="metric-value-row">
+            <span id="valFlux" class="metric-main">1,361 W/m²</span>
+            <span id="valFluxRel" class="metric-sub">(1.00x Earth)</span>
+          </div>
+          <div class="metric-hint">Energy received per unit area / sec</div>
+        </div>
+
+        <!-- Equilibrium Temperature -->
+        <div class="metric-card highlight-card">
+          <div class="metric-label">Equilibrium Temperature</div>
+          <div class="metric-value-row">
+            <span id="valTempK" class="metric-main temp-val">288 K</span>
+            <div class="temp-sub-group">
+              <span id="valTempC" class="metric-sub temp-c">+15 °C</span>
+              <span id="valTempF" class="metric-sub temp-f">(59 °F)</span>
+            </div>
+          </div>
+          <div class="metric-hint">Liquid range: 273.15 K to 373.15 K</div>
+        </div>
+
+        <!-- Velocity & Period -->
+        <div class="metric-card split-metric">
+          <div>
+            <div class="metric-label">Orbital Speed</div>
+            <div id="valSpeed" class="metric-main-sm">29.8 km/s</div>
+          </div>
+          <div class="metric-divider"></div>
+          <div>
+            <div class="metric-label">Orbital Period</div>
+            <div id="valPeriod" class="metric-main-sm">365.2 days</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Thermal Gradient Legend -->
+      <div class="thermal-spectrum-box">
+        <div class="spectrum-bar">
+          <div class="spectrum-zone zone-scorched"><span>Scorched</span></div>
+          <div class="spectrum-zone zone-habitable"><span>Habitable (273–373K)</span></div>
+          <div class="spectrum-zone zone-frozen"><span>Frozen</span></div>
+        </div>
+      </div>
+
+      <div class="drag-instructions">
+        <span class="hand-icon">👆</span>
+        <span><strong>Grab & Drag</strong> the planet with your mouse or finger to move it closer or farther from the star.</span>
+      </div>
+    </aside>
+
+    <!-- Star Radiation & Blackbody Inspector Panel -->
+    <aside class="star-panel glass-panel">
+      <div class="panel-header">
+        <span class="icon">☀️</span>
+        <h3>Stellar Blackbody Radiation</h3>
+      </div>
+
+      <div class="star-info-row">
+        <span id="starTypeBadge" class="star-type-badge">G Class (Yellow Dwarf)</span>
+      </div>
+
+      <div class="star-slider-row">
+        <div class="slider-label-row">
+          <span>Photosphere Temp:</span>
+          <span id="starTempDisplay" class="value-mono">5,778 K</span>
+        </div>
+        <input type="range" id="starTempSlider" min="2000" max="15000" step="50" value="5778" class="custom-slider">
+        <div class="slider-ticks">
+          <span>2,000 K (M)</span>
+          <span>5,778 K (Sun)</span>
+          <span>15,000 K (B)</span>
+        </div>
+      </div>
+
+      <div class="star-specs-grid">
+        <div class="star-spec-item">
+          <span class="spec-label">Mass:</span>
+          <span id="starMassDisplay" class="spec-val">1.00 M☉</span>
+        </div>
+        <div class="star-spec-item">
+          <span class="spec-label">Luminosity:</span>
+          <span id="starLumDisplay" class="spec-val">1.00e+00 L☉</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Bottom Simulation Control Deck -->
+    <footer class="bottom-controls glass-panel">
+      <div class="control-group">
+        <button id="btnPause" class="ctrl-btn" title="Pause or Resume physics integration">⏸ Pause</button>
+        <button id="btnReset" class="ctrl-btn" title="Reset orbit to 1 AU">↺ Reset Orbit</button>
+        <button id="btnSnapHZ" class="ctrl-btn btn-highlight" title="Center planet in the Habitable Zone">🎯 Snap to Habitable Zone</button>
+      </div>
+
+      <div class="control-group time-group">
+        <label for="timeSlider">Time Flow:</label>
+        <input type="range" id="timeSlider" min="0.1" max="5.0" step="0.1" value="1.0" class="custom-slider time-slider">
+        <span id="timeDisplay" class="value-mono">1.0x</span>
+      </div>
+
+      <div class="control-group release-group">
+        <label for="releaseModeSelect">On Release:</label>
+        <select id="releaseModeSelect" class="custom-select compact-select">
+          <option value="circular">Stable Circular Orbit</option>
+          <option value="sling">Flick / Momentum Sling</option>
+        </select>
+      </div>
+
+      <div class="control-group zoom-group">
+        <button id="btnZoomIn" class="icon-btn" title="Zoom In">+</button>
+        <button id="btnZoomOut" class="icon-btn" title="Zoom Out">−</button>
+        <button id="btnZoomFit" class="icon-btn" title="Fit System to Screen">⛶ Fit</button>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
